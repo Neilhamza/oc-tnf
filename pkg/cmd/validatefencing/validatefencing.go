@@ -27,7 +27,7 @@ type ValidateFencingOptions struct {
 func NewCmdValidateFencing(streams genericclioptions.IOStreams) *cobra.Command {
 	o := &ValidateFencingOptions{
 		configFlags: genericclioptions.NewConfigFlags(true),
-		IOStreams:    streams,
+		IOStreams:   streams,
 	}
 
 	cmd := &cobra.Command{

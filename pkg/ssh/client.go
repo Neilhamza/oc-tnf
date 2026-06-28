@@ -23,7 +23,7 @@ func NewClient(user, address string, keys []string) (*ssh.Client, error) {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeysCallback(ag.Signers),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // cluster nodes don't have known host keys
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "ssh: handshake failed: ssh: unable to authenticate") {

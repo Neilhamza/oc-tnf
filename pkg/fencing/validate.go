@@ -63,7 +63,7 @@ func Run(ctx context.Context, cfg Config) error {
 	logrus.Infof("Connecting to %s (%s)", nodes[0].Name, nodes[0].IP)
 	clientA, err := sshConnect(cfg, nodes[0].IP)
 	if err != nil {
-		return fmt.Errorf("SSH to %s failed: %w", nodes[0].Name, err)
+		return fmt.Errorf("ssh to %s failed: %w", nodes[0].Name, err)
 	}
 	defer clientA.Close()
 
@@ -86,7 +86,7 @@ func Run(ctx context.Context, cfg Config) error {
 	logrus.Infof("Connecting to %s (%s)", nodes[1].Name, nodes[1].IP)
 	clientB, err := sshConnect(cfg, nodes[1].IP)
 	if err != nil {
-		return fmt.Errorf("SSH to %s failed: %w", nodes[1].Name, err)
+		return fmt.Errorf("ssh to %s failed: %w", nodes[1].Name, err)
 	}
 	defer clientB.Close()
 
