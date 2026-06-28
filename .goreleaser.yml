@@ -1,0 +1,27 @@
+project_name: oc-tnf
+version: 2
+release:
+  github:
+    owner: openshift
+    name: oc-tnf
+builds:
+  - binary: oc-tnf
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/oc-tnf/
+    ldflags: -s -w
+      -X 'main.version={{ .Version }}'
+      -X 'main.date={{ .Date }}'
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: checksums.txt
