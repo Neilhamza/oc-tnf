@@ -79,7 +79,7 @@ func LoadPrivateSSHKeys(paths []string) (map[string]interface{}, error) {
 	var errs []error
 	keys := make(map[string]interface{})
 	for _, path := range paths {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // paths come from user-provided --ssh-key flag
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to read %q: %w", path, err))
 			continue

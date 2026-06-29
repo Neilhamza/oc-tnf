@@ -13,7 +13,7 @@ import (
 func getAgent(keys []string) (agent.Agent, string, error) {
 	if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
 		logrus.Debugf("Using SSH_AUTH_SOCK %s to connect to an existing agent", authSock)
-		if conn, err := net.Dial("unix", authSock); err == nil {
+		if conn, err := net.Dial("unix", authSock); err == nil { //nolint:gosec // SSH_AUTH_SOCK is a trusted env var
 			return agent.NewClient(conn), "agent", nil
 		}
 	}

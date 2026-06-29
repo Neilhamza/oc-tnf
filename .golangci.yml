@@ -1,52 +1,60 @@
----
+version: "2"
 run:
-  concurrency: 6
+  modules-download-mode: readonly
   timeout: 5m
 linters:
-  disable-all: true
+  default: none
   enable:
     - depguard
     - goconst
     - gocritic
     - revive
-    - gofmt
-    - goimports
     - govet
     - ineffassign
     - misspell
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
-    - gocyclo
     - unused
     - errorlint
     - gosec
-linters-settings:
-  revive:
+  settings:
+    revive:
+      rules:
+        - name: if-return
+          severity: warning
+          disabled: true
+        - name: string-format
+          severity: warning
+          disabled: false
+          arguments:
+            - - 'fmt.Errorf[0]'
+              - '/^([^A-Z]|$)/'
+              - must not start with a capital letter
+            - - 'fmt.Errorf[0]'
+              - '/(^|[^\.!?])$/'
+              - must not end in punctuation
+            - - panic
+              - '/^[^\n]*$/'
+              - must not contain line breaks
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "github.com/pkg/errors"
+              desc: Should be replaced by standard lib errors package
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: if-return
-        severity: warning
-        disabled: true
-      - name: string-format
-        severity: warning
-        disabled: false
-        arguments:
-          - - 'fmt.Errorf[0]'
-            - '/^([^A-Z]|$)/'
-            - must not start with a capital letter
-          - - 'fmt.Errorf[0]'
-            - '/(^|[^\.!?])$/'
-            - must not end in punctuation
-          - - panic
-            - '/^[^\n]*$/'
-            - must not contain line breaks
-  depguard:
-    rules:
-      main:
-        list-mode: lax
-        files:
-          - $all
-        deny:
-          - pkg: "github.com/pkg/errors"
-            desc: Should be replaced by standard lib errors package
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+formatters:
+  enable:
+    - gofmt
+    - goimports
