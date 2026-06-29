@@ -37,6 +37,8 @@ linters:
             - - panic
               - '/^[^\n]*$/'
               - must not contain line breaks
+    goconst:
+      min-occurrences: 4
     depguard:
       rules:
         main:

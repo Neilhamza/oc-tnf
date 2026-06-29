@@ -5,12 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
+
+const sshDialTimeout = 30 * time.Second
 
 func NewClient(user, address string, keys []string) (*ssh.Client, error) {
 	ag, agentType, err := getAgent(keys)
@@ -24,6 +27,7 @@ func NewClient(user, address string, keys []string) (*ssh.Client, error) {
 			ssh.PublicKeysCallback(ag.Signers),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // cluster nodes don't have known host keys
+		Timeout:         sshDialTimeout,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "ssh: handshake failed: ssh: unable to authenticate") {
