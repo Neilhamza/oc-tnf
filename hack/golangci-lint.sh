@@ -1,0 +1,12 @@
+#!/bin/bash
+
+golangci_lint=$(which golangci-lint)
+if [ ! -f "${golangci_lint}" ]; then
+    echo "Failed to find required command: golangci-lint"
+    exit 1
+fi
+
+export GOCACHE=/tmp/
+export GOLANGCI_LINT_CACHE=/tmp/.cache
+"${golangci_lint}" version
+"${golangci_lint}" run --verbose ./...
