@@ -57,7 +57,7 @@ Requires SSH access to both nodes as user "core" and a cluster-admin kubeconfig.
 
   # Validate with explicit kubeconfig
   oc tnf validate-fencing --kubeconfig /path/to/kubeconfig --ssh-key ~/.ssh/id_rsa`,
-		Args: cobra.ExactArgs(0),
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(); err != nil {
 				return err

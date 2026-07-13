@@ -26,7 +26,7 @@ var (
 func checkStonith(client *gossh.Client) error {
 	out, err := sshRun(client, "pcs stonith config || pcs stonith status || pcs stonith show")
 	if err != nil && strings.TrimSpace(out) == "" {
-		return fmt.Errorf("no STONITH devices configured: %w", err)
+		return fmt.Errorf("failed to query STONITH configuration (check that pcs is installed and SSH user has sudo access): %w", err)
 	}
 	if strings.TrimSpace(out) == "" {
 		return fmt.Errorf("no STONITH devices configured")
@@ -145,6 +145,8 @@ func parsePacemakerOnline(output string) []string {
 	var names []string
 	for _, line := range strings.Split(output, "\n") {
 		trimmed := strings.TrimSpace(line)
+		// crm_mon -1 on Pacemaker 2.x emits "* Online: [ node1 node2 ]"
+		trimmed = strings.TrimPrefix(trimmed, "* ")
 		if !strings.HasPrefix(trimmed, "Online:") {
 			continue
 		}

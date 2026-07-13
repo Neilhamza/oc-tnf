@@ -73,6 +73,11 @@ func TestParsePacemakerOnline(t *testing.T) {
 			expect: []string{"master-0.example.com", "master-1.example.com"},
 		},
 		{
+			name:   "crm_mon bulleted format",
+			input:  "  * Online: [ node-a node-b ]\n  * OFFLINE: [ ]\n",
+			expect: []string{"node-a", "node-b"},
+		},
+		{
 			name:   "no online line",
 			input:  "Standby: node-a\n",
 			expect: nil,

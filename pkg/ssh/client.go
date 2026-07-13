@@ -9,7 +9,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
@@ -22,7 +21,7 @@ func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.
 		return nil, fmt.Errorf("failed to initialize the SSH agent: %w", err)
 	}
 
-	hostKeyCallback, err := hostKeyCallback(insecureHostKey)
+	hostKeyCb, err := hostKeyCallback(insecureHostKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set up host key verification: %w", err)
 	}
@@ -32,7 +31,7 @@ func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeysCallback(ag.Signers),
 		},
-		HostKeyCallback: hostKeyCallback,
+		HostKeyCallback: hostKeyCb,
 		Timeout:         sshDialTimeout,
 	})
 	if err != nil {
@@ -53,9 +52,6 @@ func RunOutput(client *ssh.Client, command string) (string, string, error) {
 		return "", "", err
 	}
 	defer sess.Close()
-	if err := agent.RequestAgentForwarding(sess); err != nil {
-		logrus.Debugf("agent forwarding unavailable: %v", err)
-	}
 
 	var stdout, stderr strings.Builder
 	sess.Stdout = &stdout
@@ -66,18 +62,27 @@ func RunOutput(client *ssh.Client, command string) (string, string, error) {
 
 func hostKeyCallback(insecure bool) (ssh.HostKeyCallback, error) {
 	if insecure {
-		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // user explicitly opted out
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // user explicitly opted out via --insecure-skip-host-key-check
 	}
-	knownHostsPath := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
-	if _, err := os.Stat(knownHostsPath); err != nil { //nolint:gosec // known_hosts is a fixed well-known path
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logrus.Warnf("Could not determine home directory: %v — falling back to insecure host key verification", err)
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // no home directory available
+	}
+	knownHostsPath := filepath.Join(home, ".ssh", "known_hosts")
+	if _, err := os.Stat(knownHostsPath); err != nil {
 		logrus.Warnf("No known_hosts file found at %s — falling back to insecure host key verification", knownHostsPath)
 		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // no known_hosts available
 	}
 	return knownhosts.New(knownHostsPath)
 }
 
-func defaultPrivateSSHKeys() (map[string]interface{}, error) {
-	d := filepath.Join(os.Getenv("HOME"), ".ssh")
+func defaultPrivateSSHKeys() (map[string]any, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine home directory: %w", err)
+	}
+	d := filepath.Join(home, ".ssh")
 	paths, err := os.ReadDir(d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory %q: %w", d, err)
@@ -97,19 +102,22 @@ func defaultPrivateSSHKeys() (map[string]interface{}, error) {
 	return nil, err
 }
 
-func LoadPrivateSSHKeys(paths []string) (map[string]interface{}, error) {
+func LoadPrivateSSHKeys(paths []string) (map[string]any, error) {
 	var errs []error
-	keys := make(map[string]interface{})
+	keys := make(map[string]any)
 	for _, path := range paths {
-		data, err := os.ReadFile(path) //nolint:gosec // paths come from user-provided --ssh-key flag
+		data, err := os.ReadFile(path) //nolint:gosec // paths come from user-provided --ssh-key flag or ~/.ssh/
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to read %q: %w", path, err))
 			continue
 		}
 		key, err := ssh.ParseRawPrivateKey(data)
 		if err != nil {
-			logrus.Debugf("failed to parse SSH private key from %q", path)
-			errs = append(errs, fmt.Errorf("failed to parse SSH private key from %q: %w", path, err))
+			if isPassphraseError(err) {
+				errs = append(errs, fmt.Errorf("key %q is passphrase-protected; add it to ssh-agent or provide an unencrypted key", path))
+			} else {
+				logrus.Debugf("skipping %q: not a valid private key", path)
+			}
 			continue
 		}
 		keys[path] = key

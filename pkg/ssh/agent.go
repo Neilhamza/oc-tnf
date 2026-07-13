@@ -1,29 +1,38 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
+// getAgent returns an SSH agent for authentication.
+// If explicit key paths are provided, builds an in-memory keyring from only those keys.
+// Otherwise, tries the running SSH agent (SSH_AUTH_SOCK), then falls back to ~/.ssh/ defaults.
 func getAgent(keys []string) (agent.Agent, string, error) {
+	if len(keys) > 0 {
+		return newAgent(keys)
+	}
+
 	if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
 		logrus.Debugf("Using SSH_AUTH_SOCK %s to connect to an existing agent", authSock)
-		if conn, err := net.Dial("unix", authSock); err == nil { //nolint:gosec // SSH_AUTH_SOCK is a trusted env var
+		if conn, err := net.Dial("unix", authSock); err == nil { //nolint:gosec // SSH_AUTH_SOCK is a trusted local socket
 			return agent.NewClient(conn), "agent", nil
 		}
 	}
 
-	return newAgent(keys)
+	return newAgentFromDefaults()
 }
 
 func newAgent(keyPaths []string) (agent.Agent, string, error) {
-	keys, err := loadKeys(keyPaths)
-	if err != nil {
+	keys, err := LoadPrivateSSHKeys(keyPaths)
+	if err != nil && len(keys) == 0 {
 		return nil, "", err
 	}
 
@@ -41,23 +50,25 @@ func newAgent(keyPaths []string) (agent.Agent, string, error) {
 	return ag, "keys", nil
 }
 
-func loadKeys(paths []string) (map[string]interface{}, error) {
-	keys := map[string]interface{}{}
-	if len(paths) > 0 {
-		pkeys, err := LoadPrivateSSHKeys(paths)
-		if err != nil {
-			return nil, err
+func newAgentFromDefaults() (agent.Agent, string, error) {
+	keys, err := defaultPrivateSSHKeys()
+	if err != nil || len(keys) == 0 {
+		return nil, "", fmt.Errorf("no SSH keys available: provide --ssh-key, start an ssh-agent, or add keys to ~/.ssh/: %w", err)
+	}
+
+	ag := agent.NewKeyring()
+	for name, key := range keys {
+		if addErr := ag.Add(agent.AddedKey{PrivateKey: key}); addErr != nil {
+			logrus.Debugf("failed to add default key %s: %v", name, addErr)
+			continue
 		}
-		for k, v := range pkeys {
-			keys[k] = v
-		}
+		logrus.Debugf("Added default key %s to internal agent", name)
 	}
-	dkeys, err := defaultPrivateSSHKeys()
-	if err != nil && len(paths) == 0 {
-		return nil, err
-	}
-	for k, v := range dkeys {
-		keys[k] = v
-	}
-	return keys, nil
+	return ag, "keys", nil
+}
+
+// isPassphraseError checks if an error is due to a passphrase-protected key.
+func isPassphraseError(err error) bool {
+	var passErr *ssh.PassphraseMissingError
+	return errors.As(err, &passErr)
 }
