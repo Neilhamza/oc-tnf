@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 PACKAGE_NAME          := github.com/openshift/oc-tnf
-GOLANG_CROSS_VERSION  ?= v1.24.0
+GOLANG_CROSS_VERSION  ?= v1.25.0
 
 HOST_OS := $(shell go env GOOS)
 HOST_ARCH := $(shell go env GOARCH)

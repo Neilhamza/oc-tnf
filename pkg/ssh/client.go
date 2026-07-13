@@ -10,15 +10,21 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 const sshDialTimeout = 30 * time.Second
 
-func NewClient(user, address string, keys []string) (*ssh.Client, error) {
+func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.Client, error) {
 	ag, agentType, err := getAgent(keys)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize the SSH agent: %w", err)
+	}
+
+	hostKeyCallback, err := hostKeyCallback(insecureHostKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up host key verification: %w", err)
 	}
 
 	client, err := ssh.Dial("tcp", address, &ssh.ClientConfig{
@@ -26,7 +32,7 @@ func NewClient(user, address string, keys []string) (*ssh.Client, error) {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeysCallback(ag.Signers),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // cluster nodes don't have known host keys
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         sshDialTimeout,
 	})
 	if err != nil {
@@ -56,6 +62,18 @@ func RunOutput(client *ssh.Client, command string) (string, string, error) {
 	sess.Stderr = &stderr
 	err = sess.Run(command)
 	return stdout.String(), stderr.String(), err
+}
+
+func hostKeyCallback(insecure bool) (ssh.HostKeyCallback, error) {
+	if insecure {
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // user explicitly opted out
+	}
+	knownHostsPath := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
+	if _, err := os.Stat(knownHostsPath); err != nil { //nolint:gosec // known_hosts is a fixed well-known path
+		logrus.Warnf("No known_hosts file found at %s — falling back to insecure host key verification", knownHostsPath)
+		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // no known_hosts available
+	}
+	return knownhosts.New(knownHostsPath)
 }
 
 func defaultPrivateSSHKeys() (map[string]interface{}, error) {

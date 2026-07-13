@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/openshift/oc-tnf/pkg/cmd"
@@ -25,6 +24,7 @@ func main() {
 	root := cmd.NewCmdTNF(streams)
 	root.Version = fmt.Sprintf("%s (%s)", version, date)
 	if err := root.Execute(); err != nil {
-		logrus.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
