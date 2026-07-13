@@ -99,9 +99,14 @@ release: ## Create a release with GoReleaser (requires GITHUB_TOKEN)
 		ghcr.io/goreleaser/goreleaser-cross:${GOLANG_CROSS_VERSION} \
 		release --clean
 
+.PHONY: krew-manifest
+krew-manifest: ## Regenerate plugins/tnf.yaml from dist/checksums.txt
+	@hack/update-krew-manifest.sh
+
 .PHONY: clean
 clean: ## Clean build artifacts
 	$(RM) -r '$(OUTPUT_DIR)'
+	$(RM) -r dist/
 
 .PHONY: version
 version: build ## Display version of built binary

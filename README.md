@@ -4,11 +4,27 @@ OpenShift CLI plugin for Two Node with Fencing (TNF) cluster utilities.
 
 ## Install
 
-### Via Krew (custom index)
+### Direct download
+
+Download the binary for your platform from [GitHub Releases](https://github.com/openshift/oc-tnf/releases/latest) and place it on your PATH:
 
 ```bash
-kubectl krew index add openshift https://github.com/openshift/krew-index.git
-kubectl krew install openshift/tnf
+# Linux (amd64)
+curl -LO https://github.com/openshift/oc-tnf/releases/latest/download/oc-tnf_linux_amd64.tar.gz
+tar xzf oc-tnf_linux_amd64.tar.gz
+sudo install oc-tnf /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -LO https://github.com/openshift/oc-tnf/releases/latest/download/oc-tnf_darwin_arm64.tar.gz
+tar xzf oc-tnf_darwin_arm64.tar.gz
+sudo install oc-tnf /usr/local/bin/
+```
+
+### Via Krew
+
+```bash
+kubectl krew index add openshift-tnf https://github.com/openshift/oc-tnf.git
+kubectl krew install openshift-tnf/tnf
 ```
 
 ### From source
@@ -58,9 +74,10 @@ oc tnf validate-fencing --kubeconfig /path/to/kubeconfig --ssh-key ~/.ssh/id_rsa
 ## Development
 
 ```bash
-make build          # Build for current platform
-make test           # Run unit tests
-make golangci-lint  # Run linter
-make cross-build    # Build for all platforms
-make release-dry-run # Test GoReleaser without publishing
+make build            # Build for current platform
+make test             # Run unit tests
+make golangci-lint    # Run linter
+make cross-build      # Build for all platforms
+make release-dry-run  # Test GoReleaser without publishing
+make krew-manifest    # Regenerate plugins/tnf.yaml from dist/checksums.txt
 ```
