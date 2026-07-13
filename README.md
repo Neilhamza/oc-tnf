@@ -27,6 +27,8 @@ kubectl krew index add openshift-tnf https://github.com/openshift/oc-tnf.git
 kubectl krew install openshift-tnf/tnf
 ```
 
+Krew will print a trust warning for custom indexes — this is expected. After install, the command is `oc tnf validate-fencing`.
+
 ### From source
 
 ```bash

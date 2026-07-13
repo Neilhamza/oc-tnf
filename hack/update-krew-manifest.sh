@@ -7,13 +7,13 @@ if [ ! -f dist/checksums.txt ]; then
     exit 1
 fi
 
-TAG=$(git describe --tags --exact-match 2>/dev/null || echo "vUNRELEASED")
+TAG=$(git describe --tags --exact-match 2>/dev/null) || { echo "HEAD is not tagged — tag the release first"; exit 1; }
 REPO="openshift/oc-tnf"
 
-SHA_LINUX_AMD64=$(grep linux_amd64 dist/checksums.txt | awk '{print $1}')
-SHA_LINUX_ARM64=$(grep linux_arm64 dist/checksums.txt | awk '{print $1}')
-SHA_DARWIN_AMD64=$(grep darwin_amd64 dist/checksums.txt | awk '{print $1}')
-SHA_DARWIN_ARM64=$(grep darwin_arm64 dist/checksums.txt | awk '{print $1}')
+SHA_LINUX_AMD64=$(grep -E 'oc-tnf_linux_amd64\.tar\.gz$' dist/checksums.txt | awk '{print $1}')
+SHA_LINUX_ARM64=$(grep -E 'oc-tnf_linux_arm64\.tar\.gz$' dist/checksums.txt | awk '{print $1}')
+SHA_DARWIN_AMD64=$(grep -E 'oc-tnf_darwin_amd64\.tar\.gz$' dist/checksums.txt | awk '{print $1}')
+SHA_DARWIN_ARM64=$(grep -E 'oc-tnf_darwin_arm64\.tar\.gz$' dist/checksums.txt | awk '{print $1}')
 
 cat > plugins/tnf.yaml <<EOF
 apiVersion: krew.googlecontainertools.github.com/v1alpha2
@@ -23,7 +23,7 @@ metadata:
 spec:
   version: ${TAG}
   homepage: https://github.com/${REPO}
-  shortDescription: Validate fencing on Two Node with Fencing (TNF) OpenShift clusters
+  shortDescription: Validate STONITH fencing on TNF clusters
   description: |
     oc-tnf provides tooling for OpenShift Two Node with Fencing (TNF)
     clusters. The validate-fencing subcommand fences each cluster node

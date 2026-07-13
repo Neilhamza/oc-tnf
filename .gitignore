@@ -24,6 +24,10 @@ profile.cov
 go.work
 go.work.sum
 
+# Build and release artifacts
+_output/
+dist/
+
 # env file
 .env
 

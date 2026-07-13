@@ -5,7 +5,7 @@ metadata:
 spec:
   version: v0.0.1
   homepage: https://github.com/openshift/oc-tnf
-  shortDescription: Validate fencing on Two Node with Fencing (TNF) OpenShift clusters
+  shortDescription: Validate STONITH fencing on TNF clusters
   description: |
     oc-tnf provides tooling for OpenShift Two Node with Fencing (TNF)
     clusters. The validate-fencing subcommand fences each cluster node
