@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,6 +42,9 @@ func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.
 			}
 			return nil, fmt.Errorf("failed to use the provided keys for authentication: %w", err)
 		}
+		if keyErr := hostKeyError(err); keyErr != nil {
+			return nil, keyErr
+		}
 		return nil, err
 	}
 	return client, nil
@@ -66,15 +70,24 @@ func hostKeyCallback(insecure bool) (ssh.HostKeyCallback, error) {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		logrus.Warnf("Could not determine home directory: %v — falling back to insecure host key verification", err)
-		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // no home directory available
+		return nil, fmt.Errorf("could not determine home directory for known_hosts: %w — pass --insecure-skip-host-key-check to skip verification", err)
 	}
 	knownHostsPath := filepath.Join(home, ".ssh", "known_hosts")
 	if _, err := os.Stat(knownHostsPath); err != nil {
-		logrus.Warnf("No known_hosts file found at %s — falling back to insecure host key verification", knownHostsPath)
-		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // no known_hosts available
+		return nil, fmt.Errorf("no %s found — connect once with 'ssh core@<node-ip>' to record host keys, or pass --insecure-skip-host-key-check", knownHostsPath)
 	}
 	return knownhosts.New(knownHostsPath)
+}
+
+func hostKeyError(err error) error {
+	var keyErr *knownhosts.KeyError
+	if !errors.As(err, &keyErr) {
+		return nil
+	}
+	if len(keyErr.Want) == 0 {
+		return fmt.Errorf("host key not found in known_hosts — connect once with 'ssh core@<node-ip>' to record the key, or pass --insecure-skip-host-key-check: %w", err)
+	}
+	return fmt.Errorf("host key changed — possible man-in-the-middle attack. The host key does not match known_hosts. Remove the old entry and reconnect, or verify the key is legitimate: %w", err)
 }
 
 func defaultPrivateSSHKeys() (map[string]any, error) {

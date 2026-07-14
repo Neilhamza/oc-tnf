@@ -32,7 +32,7 @@ func getAgent(keys []string) (agent.Agent, string, error) {
 
 func newAgent(keyPaths []string) (agent.Agent, string, error) {
 	keys, err := LoadPrivateSSHKeys(keyPaths, true)
-	if err != nil && len(keys) == 0 {
+	if err != nil {
 		return nil, "", err
 	}
 
@@ -53,8 +53,11 @@ func newAgent(keyPaths []string) (agent.Agent, string, error) {
 
 func newAgentFromDefaults() (agent.Agent, string, error) {
 	keys, err := defaultPrivateSSHKeys()
-	if err != nil || len(keys) == 0 {
+	if err != nil {
 		return nil, "", fmt.Errorf("no SSH keys available: provide --ssh-key, start an ssh-agent, or add keys to ~/.ssh/: %w", err)
+	}
+	if len(keys) == 0 {
+		return nil, "", fmt.Errorf("no SSH keys available: provide --ssh-key, start an ssh-agent, or add keys to ~/.ssh/")
 	}
 
 	ag := agent.NewKeyring()
