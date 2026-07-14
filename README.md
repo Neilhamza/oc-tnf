@@ -81,5 +81,5 @@ make test             # Run unit tests
 make golangci-lint    # Run linter
 make cross-build      # Build for all platforms
 make release-dry-run  # Test GoReleaser without publishing
-make krew-manifest    # Regenerate plugins/tnf.yaml from dist/checksums.txt
+make release VERSION=v0.0.2 GITHUB_TOKEN=...  # Tag, release, and update Krew manifest
 ```
