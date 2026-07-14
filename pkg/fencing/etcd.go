@@ -44,28 +44,37 @@ func pollEtcdHealth(ctx context.Context, client *gossh.Client, nodes []NodeInfo)
 	endpoints := formatEtcdURL(nodes[0].IP) + "," + formatEtcdURL(nodes[1].IP)
 	pollCtx, cancel := context.WithTimeout(ctx, etcdTimeout)
 	defer cancel()
-	return wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
+	var lastErr error
+	err := wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
 		healthCmd := fmt.Sprintf("podman exec etcd sh -lc 'ETCDCTL_API=3 etcdctl -w json endpoint health --endpoints=%s'", endpoints)
 		out, err := sshRun(client, healthCmd)
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking etcd health: %v", err)
 			return false, nil
 		}
-		if parseEtcdHealth(out) != nil {
+		if parseErr := parseEtcdHealth(out); parseErr != nil {
+			lastErr = parseErr
 			return false, nil
 		}
 
 		memberCmd := "podman exec etcd sh -lc 'ETCDCTL_API=3 etcdctl -w json member list'"
 		out, err = sshRun(client, memberCmd)
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking etcd members: %v", err)
 			return false, nil
 		}
-		if parseEtcdMembers(out, nodes[0].IP, nodes[1].IP) != nil {
+		if parseErr := parseEtcdMembers(out, nodes[0].IP, nodes[1].IP); parseErr != nil {
+			lastErr = parseErr
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w; last error: %w", err, lastErr)
+	}
+	return err
 }
 
 type etcdHealthEntry struct {

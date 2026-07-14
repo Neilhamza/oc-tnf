@@ -1,0 +1,49 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: tnf
+spec:
+  version: v0.0.1
+  homepage: https://github.com/openshift/oc-tnf
+  shortDescription: Validate STONITH fencing on TNF clusters
+  description: |
+    oc-tnf provides tooling for OpenShift Two Node with Fencing (TNF)
+    clusters. The validate-fencing subcommand fences each cluster node
+    sequentially via STONITH and verifies recovery, including Pacemaker
+    rejoin and etcd quorum restoration.
+
+    WARNING: validate-fencing is disruptive. It power-fences real nodes.
+    Only run it against a TNF cluster you intend to test.
+  caveats: |
+    Requires SSH access to the cluster nodes (--ssh-key) and a valid
+    kubeconfig for the TNF cluster. This plugin only works on OpenShift
+    DualReplica (TNF) clusters.
+  platforms:
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_linux_amd64.tar.gz
+      sha256: "df80845d22bc862275191ad0073cc4f8005f7336b17fb5b60fa8bd5f0ba5ba8e"
+      bin: oc-tnf
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_linux_arm64.tar.gz
+      sha256: "3a531ee1c818573af12b615eee73922f512e78d7c16bfafee518508582be73aa"
+      bin: oc-tnf
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_darwin_amd64.tar.gz
+      sha256: "7fccdc839bc8a96941cbf2f59c9509f659e711e1197ad98ceea6c8f30aab3473"
+      bin: oc-tnf
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_darwin_arm64.tar.gz
+      sha256: "5191a7a441496c3e4e1d76f71ec9f72f7e8f6102020a429a1d89e012bbcaf347"
+      bin: oc-tnf

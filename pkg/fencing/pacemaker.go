@@ -26,7 +26,7 @@ var (
 func checkStonith(client *gossh.Client) error {
 	out, err := sshRun(client, "pcs stonith config || pcs stonith status || pcs stonith show")
 	if err != nil && strings.TrimSpace(out) == "" {
-		return fmt.Errorf("no STONITH devices configured: %w", err)
+		return fmt.Errorf("failed to query STONITH configuration (check that pcs is installed and SSH user has sudo access): %w", err)
 	}
 	if strings.TrimSpace(out) == "" {
 		return fmt.Errorf("no STONITH devices configured")
@@ -91,9 +91,11 @@ func fenceNode(client *gossh.Client, pcmkName string) error {
 func pollPacemakerOnline(ctx context.Context, client *gossh.Client, nodes []NodeInfo) error {
 	pollCtx, cancel := context.WithTimeout(ctx, pcmkTimeout)
 	defer cancel()
-	return wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
+	var lastErr error
+	err := wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
 		out, err := sshRun(client, "pcs status nodes || crm_mon -1")
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking pacemaker status: %v", err)
 			return false, nil
 		}
@@ -105,6 +107,10 @@ func pollPacemakerOnline(ctx context.Context, client *gossh.Client, nodes []Node
 		}
 		return true, nil
 	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w; last error: %w", err, lastErr)
+	}
+	return err
 }
 
 func resolvePacemakerNames(client *gossh.Client, nodes []NodeInfo) error {
@@ -145,6 +151,8 @@ func parsePacemakerOnline(output string) []string {
 	var names []string
 	for _, line := range strings.Split(output, "\n") {
 		trimmed := strings.TrimSpace(line)
+		// crm_mon -1 on Pacemaker 2.x emits "* Online: [ node1 node2 ]"
+		trimmed = strings.TrimPrefix(trimmed, "* ")
 		if !strings.HasPrefix(trimmed, "Online:") {
 			continue
 		}

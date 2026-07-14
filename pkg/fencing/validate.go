@@ -33,16 +33,29 @@ type NodeInfo struct {
 
 // Config holds all inputs needed by the fencing validator.
 type Config struct {
-	KubeClient kubernetes.Interface
-	SSHUser    string
-	SSHKeys    []string
+	KubeClient      kubernetes.Interface
+	SSHUser         string
+	SSHKeys         []string
+	InsecureHostKey bool
+	Nodes           [2]NodeInfo
+}
+
+// DiscoverNodes finds the two control-plane nodes and returns their info.
+func DiscoverNodes(ctx context.Context, kube kubernetes.Interface) ([2]NodeInfo, error) {
+	return discoverNodes(ctx, kube)
 }
 
 // Run executes the full fencing validation sequence.
 func Run(ctx context.Context, cfg Config) error {
-	nodes, err := discoverNodes(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("node discovery failed: %w", err)
+	var nodes [2]NodeInfo
+	var err error
+	if cfg.Nodes[0].Name != "" {
+		nodes = cfg.Nodes
+	} else {
+		nodes, err = discoverNodes(ctx, cfg.KubeClient)
+		if err != nil {
+			return fmt.Errorf("node discovery failed: %w", err)
+		}
 	}
 
 	logrus.Infof("Connecting to %s (%s)", nodes[0].Name, nodes[0].IP)
@@ -141,8 +154,8 @@ func runPreFlight(client *gossh.Client, nodes []NodeInfo) error {
 	return checkEtcdHealth(client, nodes)
 }
 
-func discoverNodes(ctx context.Context, cfg Config) ([2]NodeInfo, error) {
-	nodeList, err := cfg.KubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{
+func discoverNodes(ctx context.Context, kube kubernetes.Interface) ([2]NodeInfo, error) {
+	nodeList, err := kube.CoreV1().Nodes().List(ctx, metav1.ListOptions{
 		LabelSelector: "node-role.kubernetes.io/master=",
 	})
 	if err != nil {
@@ -170,7 +183,7 @@ func discoverNodes(ctx context.Context, cfg Config) ([2]NodeInfo, error) {
 
 func sshConnect(cfg Config, ip string) (*gossh.Client, error) {
 	addr := net.JoinHostPort(ip, sshPort)
-	return ssh.NewClient(cfg.SSHUser, addr, cfg.SSHKeys)
+	return ssh.NewClient(cfg.SSHUser, addr, cfg.SSHKeys, cfg.InsecureHostKey)
 }
 
 func sshRun(client *gossh.Client, cmd string) (string, error) {

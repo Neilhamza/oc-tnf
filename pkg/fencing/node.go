@@ -2,6 +2,7 @@ package fencing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -21,9 +22,11 @@ func waitNotReady(ctx context.Context, kube kubernetes.Interface, nodeName strin
 	defer cancel()
 	start := time.Now()
 	lastLog := start
-	return wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
+	var lastErr error
+	err := wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
 		ready, err := isNodeReady(ctx, kube, nodeName)
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking %s readiness: %v", nodeName, err)
 			return false, nil
 		}
@@ -36,6 +39,10 @@ func waitNotReady(ctx context.Context, kube kubernetes.Interface, nodeName strin
 		}
 		return false, nil
 	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w; last error: %w", err, lastErr)
+	}
+	return err
 }
 
 func waitReady(ctx context.Context, kube kubernetes.Interface, nodeName string) error {
@@ -43,9 +50,11 @@ func waitReady(ctx context.Context, kube kubernetes.Interface, nodeName string) 
 	defer cancel()
 	start := time.Now()
 	lastLog := start
-	return wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
+	var lastErr error
+	err := wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
 		ready, err := isNodeReady(ctx, kube, nodeName)
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking %s readiness: %v", nodeName, err)
 			return false, nil
 		}
@@ -58,6 +67,10 @@ func waitReady(ctx context.Context, kube kubernetes.Interface, nodeName string) 
 		}
 		return false, nil
 	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w; last error: %w", err, lastErr)
+	}
+	return err
 }
 
 func isNodeReady(ctx context.Context, kube kubernetes.Interface, nodeName string) (bool, error) {

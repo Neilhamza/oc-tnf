@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/sirupsen/logrus"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/openshift/oc-tnf/pkg/cmd"
@@ -16,6 +18,13 @@ var (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	streams := genericclioptions.IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,
@@ -24,7 +33,12 @@ func main() {
 
 	root := cmd.NewCmdTNF(streams)
 	root.Version = fmt.Sprintf("%s (%s)", version, date)
-	if err := root.Execute(); err != nil {
-		logrus.Fatal(err)
+	if err := root.ExecuteContext(ctx); err != nil {
+		if ctx.Err() != nil {
+			fmt.Fprintln(os.Stderr, "Interrupted — if a node was fenced, the cluster should self-recover. Verify with: pcs status")
+		}
+		fmt.Fprintln(os.Stderr, err)
+		return 1
 	}
+	return 0
 }
