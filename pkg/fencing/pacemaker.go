@@ -91,9 +91,11 @@ func fenceNode(client *gossh.Client, pcmkName string) error {
 func pollPacemakerOnline(ctx context.Context, client *gossh.Client, nodes []NodeInfo) error {
 	pollCtx, cancel := context.WithTimeout(ctx, pcmkTimeout)
 	defer cancel()
-	return wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
+	var lastErr error
+	err := wait.PollUntilContextCancel(pollCtx, pollInterval, true, func(ctx context.Context) (bool, error) {
 		out, err := sshRun(client, "pcs status nodes || crm_mon -1")
 		if err != nil {
+			lastErr = err
 			logrus.Debugf("Error checking pacemaker status: %v", err)
 			return false, nil
 		}
@@ -105,6 +107,10 @@ func pollPacemakerOnline(ctx context.Context, client *gossh.Client, nodes []Node
 		}
 		return true, nil
 	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w; last error: %w", err, lastErr)
+	}
+	return err
 }
 
 func resolvePacemakerNames(client *gossh.Client, nodes []NodeInfo) error {

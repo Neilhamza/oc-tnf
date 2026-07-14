@@ -95,14 +95,14 @@ func defaultPrivateSSHKeys() (map[string]any, error) {
 		}
 		files = append(files, filepath.Join(d, path.Name()))
 	}
-	keys, err := LoadPrivateSSHKeys(files)
+	keys, err := LoadPrivateSSHKeys(files, false)
 	if len(keys) > 0 {
 		return keys, nil
 	}
 	return nil, err
 }
 
-func LoadPrivateSSHKeys(paths []string) (map[string]any, error) {
+func LoadPrivateSSHKeys(paths []string, strict bool) (map[string]any, error) {
 	var errs []error
 	keys := make(map[string]any)
 	for _, path := range paths {
@@ -113,9 +113,12 @@ func LoadPrivateSSHKeys(paths []string) (map[string]any, error) {
 		}
 		key, err := ssh.ParseRawPrivateKey(data)
 		if err != nil {
-			if isPassphraseError(err) {
+			switch {
+			case isPassphraseError(err):
 				errs = append(errs, fmt.Errorf("key %q is passphrase-protected; add it to ssh-agent or provide an unencrypted key", path))
-			} else {
+			case strict:
+				errs = append(errs, fmt.Errorf("failed to parse SSH private key from %q: %w", path, err))
+			default:
 				logrus.Debugf("skipping %q: not a valid private key", path)
 			}
 			continue

@@ -31,7 +31,7 @@ func getAgent(keys []string) (agent.Agent, string, error) {
 }
 
 func newAgent(keyPaths []string) (agent.Agent, string, error) {
-	keys, err := LoadPrivateSSHKeys(keyPaths)
+	keys, err := LoadPrivateSSHKeys(keyPaths, true)
 	if err != nil && len(keys) == 0 {
 		return nil, "", err
 	}
@@ -41,6 +41,7 @@ func newAgent(keyPaths []string) (agent.Agent, string, error) {
 	for name, key := range keys {
 		if err := ag.Add(agent.AddedKey{PrivateKey: key}); err != nil {
 			errs = append(errs, fmt.Errorf("failed to add %s to agent: %w", name, err))
+			continue
 		}
 		logrus.Debugf("Added %s to internal agent", name)
 	}
