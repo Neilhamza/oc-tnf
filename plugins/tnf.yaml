@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: tnf
 spec:
-  version: v0.0.1
+  version: v0.0.2
   homepage: https://github.com/openshift/oc-tnf
   shortDescription: Validate STONITH fencing on TNF clusters
   description: |
@@ -23,27 +23,27 @@ spec:
         matchLabels:
           os: linux
           arch: amd64
-      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_linux_amd64.tar.gz
-      sha256: "df80845d22bc862275191ad0073cc4f8005f7336b17fb5b60fa8bd5f0ba5ba8e"
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.2/oc-tnf_linux_amd64.tar.gz
+      sha256: "3bc88c28b1d4cb56d2e5e562c46c7f4da3ef517cf717f3bb6d85b845224de0c8"
       bin: oc-tnf
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_linux_arm64.tar.gz
-      sha256: "3a531ee1c818573af12b615eee73922f512e78d7c16bfafee518508582be73aa"
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.2/oc-tnf_linux_arm64.tar.gz
+      sha256: "1c74ca4426b89ca672d713e67ffc959e800544b5e5871a2f8707e7b165c89376"
       bin: oc-tnf
     - selector:
         matchLabels:
           os: darwin
           arch: amd64
-      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_darwin_amd64.tar.gz
-      sha256: "7fccdc839bc8a96941cbf2f59c9509f659e711e1197ad98ceea6c8f30aab3473"
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.2/oc-tnf_darwin_amd64.tar.gz
+      sha256: "8fcdb07304a41d6dc6cbe093c39d3fef0dab500b58626f518c82dae320df90e0"
       bin: oc-tnf
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.1/oc-tnf_darwin_arm64.tar.gz
-      sha256: "5191a7a441496c3e4e1d76f71ec9f72f7e8f6102020a429a1d89e012bbcaf347"
+      uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.2/oc-tnf_darwin_arm64.tar.gz
+      sha256: "80fe00de64ba88d1becc9c14480326982dc8b8f423ffc88bf7909ee1d073d21f"
       bin: oc-tnf
