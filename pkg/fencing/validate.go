@@ -22,6 +22,7 @@ const (
 	sshPort          = "22"
 	pollInterval     = 5 * time.Second
 	fenceWarnSeconds = 60
+	sshCmdTimeout    = 120 // seconds, per-command timeout for SSH commands
 )
 
 // NodeInfo holds resolved information about a cluster node.
@@ -38,6 +39,8 @@ type Config struct {
 	SSHKeys         []string
 	InsecureHostKey bool
 	Nodes           [2]NodeInfo
+	ReadyTimeout    time.Duration
+	NotReadyTimeout time.Duration
 }
 
 // DiscoverNodes finds the two control-plane nodes and returns their info.
@@ -105,21 +108,23 @@ func fenceAndRecover(ctx context.Context, cfg Config, survivorClient *gossh.Clie
 		return fmt.Errorf("failed to fence %s: %w", target.Name, err)
 	}
 
+	fenceCmdDuration := time.Since(fenceStart)
+
 	logrus.Infof("Waiting for %s to become NotReady", target.Name)
-	if err := waitNotReady(ctx, cfg.KubeClient, target.Name); err != nil {
+	if err := waitNotReady(ctx, cfg.KubeClient, target.Name, cfg.NotReadyTimeout); err != nil {
 		return fmt.Errorf("%s did not become NotReady: %w", target.Name, err)
 	}
 
-	fenceDuration := time.Since(fenceStart)
-	if fenceDuration.Seconds() > fenceWarnSeconds {
-		logrus.Warnf("Fencing %s took %s to power off (threshold is %ds). BMC may be performing graceful shutdown instead of power-off. Check BMC configuration.",
-			target.Name, fenceDuration.Round(time.Second), fenceWarnSeconds)
-	} else {
-		logrus.Infof("Node %s powered off in %s", target.Name, fenceDuration.Round(time.Second))
+	notReadyDuration := time.Since(fenceStart)
+	if fenceCmdDuration.Seconds() > fenceWarnSeconds {
+		logrus.Warnf("Fence command for %s took %s (threshold is %ds). BMC may be performing graceful shutdown instead of power-off. Check BMC configuration.",
+			target.Name, fenceCmdDuration.Round(time.Second), fenceWarnSeconds)
 	}
+	logrus.Infof("Node %s: fence command %s, observed NotReady after %s",
+		target.Name, fenceCmdDuration.Round(time.Second), notReadyDuration.Round(time.Second))
 
 	logrus.Infof("Waiting for %s to become Ready", target.Name)
-	if err := waitReady(ctx, cfg.KubeClient, target.Name); err != nil {
+	if err := waitReady(ctx, cfg.KubeClient, target.Name, cfg.ReadyTimeout); err != nil {
 		return fmt.Errorf("%s did not become Ready: %w", target.Name, err)
 	}
 
@@ -187,7 +192,11 @@ func sshConnect(cfg Config, ip string) (*gossh.Client, error) {
 }
 
 func sshRun(client *gossh.Client, cmd string) (string, error) {
-	wrapped := fmt.Sprintf("sudo bash -lc %s", shellQuote(cmd))
+	return sshRunTimeout(client, cmd, sshCmdTimeout)
+}
+
+func sshRunTimeout(client *gossh.Client, cmd string, timeoutSec int) (string, error) {
+	wrapped := fmt.Sprintf("sudo timeout %d bash -lc %s", timeoutSec, shellQuote(cmd))
 	stdout, stderr, err := ssh.RunOutput(client, wrapped)
 	if err != nil {
 		return stdout, fmt.Errorf("command failed: %s\nstderr: %s: %w", cmd, stderr, err)

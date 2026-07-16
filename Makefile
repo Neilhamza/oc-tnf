@@ -83,14 +83,17 @@ release-preflight:
 	@test -n "$(VERSION)" || { echo "ERROR: VERSION=vX.Y.Z is required"; exit 1; }
 	@echo "$(VERSION)" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "ERROR: VERSION must be semver with leading v (e.g. v0.0.2)"; exit 1; }
 	@test -n "$(GITHUB_TOKEN)" || { echo "ERROR: GITHUB_TOKEN is required"; exit 1; }
+	@command -v gh >/dev/null || { echo "ERROR: gh CLI is not installed"; exit 1; }
+	@GITHUB_TOKEN=$(GITHUB_TOKEN) gh auth status >/dev/null 2>&1 || { echo "ERROR: gh is not authenticated (gh auth login, or pass a valid GITHUB_TOKEN)"; exit 1; }
 	@git diff-index --quiet HEAD -- || { echo "ERROR: working tree is dirty — commit or stash changes first"; exit 1; }
 	@test "$$(git rev-parse --abbrev-ref HEAD)" = "main" || { echo "ERROR: releases must be cut from main"; exit 1; }
 	@git fetch -q upstream main 2>/dev/null || git fetch -q origin main 2>/dev/null
-	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse upstream/main 2>/dev/null || git rev-parse origin/main)" || { echo "ERROR: HEAD is not in sync with upstream/main — pull first"; exit 1; }
+	@REF=$$(git rev-parse -q --verify upstream/main || git rev-parse -q --verify origin/main) || { echo "ERROR: no upstream/main or origin/main ref found"; exit 1; }; \
+	 test "$$(git rev-parse HEAD)" = "$$REF" || { echo "ERROR: HEAD is not in sync with $$REF — pull first"; exit 1; }
 	@! git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null 2>&1 || { echo "ERROR: tag $(VERSION) already exists"; exit 1; }
 
 .PHONY: release
-release: release-preflight ## Tag, publish release, and regenerate Krew manifest. Usage: make release VERSION=v0.0.2 GITHUB_TOKEN=...
+release: release-preflight ## Tag, publish release, update Krew manifest, and open PR. Usage: make release VERSION=v0.0.2 GITHUB_TOKEN=...
 	git tag -a $(VERSION) -m "Release $(VERSION)"
 	git push upstream $(VERSION)
 	@$(ENGINE) run \
@@ -102,9 +105,10 @@ release: release-preflight ## Tag, publish release, and regenerate Krew manifest
 		ghcr.io/goreleaser/goreleaser-cross:${GOLANG_CROSS_VERSION} \
 		release --clean
 	@$(MAKE) --no-print-directory krew-manifest
+	@GITHUB_TOKEN=$(GITHUB_TOKEN) hack/open-release-pr.sh
 	@echo ""
 	@echo ">>> Release $(VERSION) published: https://github.com/openshift/oc-tnf/releases/tag/$(VERSION)"
-	@echo ">>> plugins/tnf.yaml updated. Now commit it on a branch and open a PR."
+	@echo ">>> Manifest PR opened — ping a teammate for /lgtm"
 	@echo ""
 	@echo "Recovery if GoReleaser failed mid-run:"
 	@echo "  Fix the issue and rerun GoReleaser for the existing tag, or delete and retag:"
@@ -121,8 +125,16 @@ release-dry-run: ## Run GoReleaser in dry-run mode (no publish)
 		release --clean --skip=validate --skip=publish
 
 .PHONY: krew-manifest
-krew-manifest: ## Regenerate plugins/tnf.yaml from dist/checksums.txt
+krew-manifest: ## Regenerate plugins/tnf.yaml from the published release checksums
 	@hack/update-krew-manifest.sh
+
+.PHONY: verify-krew
+verify-krew: ## Verify plugins/tnf.yaml checksums match the published release artifacts
+	@hack/verify-krew-manifest.sh
+
+.PHONY: open-release-pr
+open-release-pr: ## Create PR for Krew manifest update (called automatically by release)
+	@hack/open-release-pr.sh
 
 .PHONY: clean
 clean: ## Clean build artifacts

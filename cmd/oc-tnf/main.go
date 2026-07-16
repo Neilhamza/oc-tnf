@@ -22,8 +22,9 @@ func main() {
 }
 
 func run() int {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() { <-ctx.Done(); stop() }()
 
 	streams := genericclioptions.IOStreams{
 		In:     os.Stdin,

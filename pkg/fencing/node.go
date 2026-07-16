@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	notReadyTimeout = 20 * time.Minute
-	readyTimeout    = 10 * time.Minute
+	defaultNotReadyTimeout = 20 * time.Minute
+	defaultReadyTimeout    = 10 * time.Minute
 )
 
-func waitNotReady(ctx context.Context, kube kubernetes.Interface, nodeName string) error {
-	pollCtx, cancel := context.WithTimeout(ctx, notReadyTimeout)
+func waitNotReady(ctx context.Context, kube kubernetes.Interface, nodeName string, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = defaultNotReadyTimeout
+	}
+	pollCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	start := time.Now()
 	lastLog := start
@@ -45,8 +48,11 @@ func waitNotReady(ctx context.Context, kube kubernetes.Interface, nodeName strin
 	return err
 }
 
-func waitReady(ctx context.Context, kube kubernetes.Interface, nodeName string) error {
-	pollCtx, cancel := context.WithTimeout(ctx, readyTimeout)
+func waitReady(ctx context.Context, kube kubernetes.Interface, nodeName string, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = defaultReadyTimeout
+	}
+	pollCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	start := time.Now()
 	lastLog := start
