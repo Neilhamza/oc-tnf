@@ -14,7 +14,11 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
-const sshDialTimeout = 30 * time.Second
+const (
+	sshDialTimeout        = 30 * time.Second
+	keepaliveInterval     = 30 * time.Second
+	keepaliveReplyTimeout = 15 * time.Second
+)
 
 func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.Client, error) {
 	ag, agentType, err := getAgent(keys)
@@ -47,6 +51,7 @@ func NewClient(user, address string, keys []string, insecureHostKey bool) (*ssh.
 		}
 		return nil, err
 	}
+	go keepalive(client, address)
 	return client, nil
 }
 
@@ -113,6 +118,43 @@ func defaultPrivateSSHKeys() (map[string]any, error) {
 		return keys, nil
 	}
 	return nil, err
+}
+
+func keepalive(client *ssh.Client, address string) {
+	done := make(chan struct{})
+	go func() {
+		client.Wait()
+		close(done)
+	}()
+
+	ticker := time.NewTicker(keepaliveInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			replied := make(chan error, 1)
+			go func() {
+				_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
+				replied <- err
+			}()
+			select {
+			case err := <-replied:
+				if err != nil {
+					logrus.Debugf("SSH connection to %s lost (expected if this node was fenced): %v", address, err)
+					client.Close()
+					return
+				}
+			case <-time.After(keepaliveReplyTimeout):
+				logrus.Warnf("SSH connection to %s: no keepalive reply within %s, closing", address, keepaliveReplyTimeout)
+				client.Close()
+				return
+			case <-done:
+				return
+			}
+		}
+	}
 }
 
 func LoadPrivateSSHKeys(paths []string, strict bool) (map[string]any, error) {

@@ -61,12 +61,19 @@ func newAgentFromDefaults() (agent.Agent, string, error) {
 	}
 
 	ag := agent.NewKeyring()
+	var errs []error
+	added := 0
 	for name, key := range keys {
 		if addErr := ag.Add(agent.AddedKey{PrivateKey: key}); addErr != nil {
 			logrus.Debugf("failed to add default key %s: %v", name, addErr)
+			errs = append(errs, fmt.Errorf("failed to add default key %s: %w", name, addErr))
 			continue
 		}
+		added++
 		logrus.Debugf("Added default key %s to internal agent", name)
+	}
+	if added == 0 {
+		return nil, "", fmt.Errorf("none of the default SSH keys in ~/.ssh/ could be loaded: %w", utilerrors.NewAggregate(errs))
 	}
 	return ag, "keys", nil
 }

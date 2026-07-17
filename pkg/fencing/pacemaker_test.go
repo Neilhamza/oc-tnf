@@ -160,11 +160,20 @@ Daemon Status:
 		{
 			name: "pacemaker inactive",
 			input: `Daemon Status:
-  corosync: active/running
+  corosync: active/enabled
   pacemaker: inactive/disabled
-  pcsd: active/running
+  pcsd: active/enabled
 `,
-			missing: []string{"pacemaker"},
+			missing: []string{"pacemaker (not running)"},
+		},
+		{
+			name: "active but not enabled at boot",
+			input: `Daemon Status:
+  corosync: active/disabled
+  pacemaker: active/enabled
+  pcsd: active/enabled
+`,
+			missing: []string{"corosync (running but not enabled at boot — nodes reboot during fencing, enable it)"},
 		},
 		{
 			name: "inactive but enabled",
@@ -173,7 +182,7 @@ Daemon Status:
   pacemaker: inactive/enabled
   pcsd: active/enabled
 `,
-			missing: []string{"pacemaker"},
+			missing: []string{"pacemaker (not running)"},
 		},
 		{
 			name:    "no daemon section",

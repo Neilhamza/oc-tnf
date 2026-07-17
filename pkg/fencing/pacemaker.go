@@ -20,7 +20,8 @@ const (
 
 var (
 	stonithEnabledRe = regexp.MustCompile(`(?i)stonith-enabled\s*[:=]\s*true`)
-	daemonActiveRe   = regexp.MustCompile(`(?i)\bactive\b.*(running|enabled)`)
+	daemonActiveRe   = regexp.MustCompile(`(?i)\bactive\b`)
+	daemonEnabledRe  = regexp.MustCompile(`(?i)\benabled\b`)
 )
 
 func checkStonith(client *gossh.Client) error {
@@ -32,9 +33,12 @@ func checkStonith(client *gossh.Client) error {
 		return fmt.Errorf("no STONITH devices configured")
 	}
 
-	prop, err := sshRun(client, "pcs property config stonith-enabled || pcs property list stonith-enabled || pcs property show --all stonith-enabled")
+	prop, err := sshRun(client, "pcs property config --all stonith-enabled || pcs property show --all stonith-enabled || pcs property config stonith-enabled")
 	if err != nil {
 		return fmt.Errorf("could not read stonith-enabled property: %w", err)
+	}
+	if strings.TrimSpace(prop) == "" {
+		return fmt.Errorf("could not determine stonith-enabled value — pcs returned empty output")
 	}
 	if !parseStonithEnabled(prop) {
 		return fmt.Errorf("stonith-enabled is not set to true")
@@ -67,7 +71,7 @@ func checkDaemons(client *gossh.Client) error {
 
 	missing, found := parseDaemonStatus(out)
 	if len(missing) > 0 {
-		return fmt.Errorf("daemons not active/running: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("pacemaker daemon problems: %s", strings.Join(missing, ", "))
 	}
 	if found {
 		logrus.Info("All daemons (corosync, pacemaker, pcsd) are active")
@@ -76,8 +80,8 @@ func checkDaemons(client *gossh.Client) error {
 }
 
 func fenceNode(client *gossh.Client, pcmkName string) error {
-	cmd := fmt.Sprintf("timeout %d pcs stonith fence %s", fenceTimeout, pcmkName)
-	_, err := sshRun(client, cmd)
+	cmd := fmt.Sprintf("pcs stonith fence %s", pcmkName)
+	_, err := sshRunTimeout(client, cmd, fenceTimeout+30)
 	if err != nil {
 		var exitErr *gossh.ExitError
 		if errors.As(err, &exitErr) && exitErr.ExitStatus() == 124 {
@@ -193,8 +197,13 @@ func parseDaemonStatus(output string) (missing []string, found bool) {
 		}
 		lower := strings.ToLower(strings.TrimSpace(line))
 		for _, svc := range []string{"corosync", "pacemaker", "pcsd"} {
-			if strings.HasPrefix(lower, svc+":") && !daemonActiveRe.MatchString(line) {
-				missing = append(missing, svc)
+			if !strings.HasPrefix(lower, svc+":") {
+				continue
+			}
+			if !daemonActiveRe.MatchString(line) {
+				missing = append(missing, fmt.Sprintf("%s (not running)", svc))
+			} else if !daemonEnabledRe.MatchString(line) {
+				missing = append(missing, fmt.Sprintf("%s (running but not enabled at boot — nodes reboot during fencing, enable it)", svc))
 			}
 		}
 	}

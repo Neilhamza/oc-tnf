@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +23,8 @@ type ValidateFencingOptions struct {
 	sshKeys              []string
 	yes                  bool
 	insecureHostKeyCheck bool
+	readyTimeout         time.Duration
+	notReadyTimeout      time.Duration
 
 	kubeClient kubernetes.Interface
 	cfgClient  configclient.Interface
@@ -75,6 +78,10 @@ Requires SSH access to both nodes as user "core" and a cluster-admin kubeconfig.
 		"Skip confirmation prompt and proceed with fencing immediately.")
 	cmd.Flags().BoolVar(&o.insecureHostKeyCheck, "insecure-skip-host-key-check", false,
 		"Skip SSH host key verification. By default, ~/.ssh/known_hosts is used.")
+	cmd.Flags().DurationVar(&o.readyTimeout, "ready-timeout", 10*time.Minute,
+		"How long to wait for a fenced node to become Ready after reboot.")
+	cmd.Flags().DurationVar(&o.notReadyTimeout, "not-ready-timeout", 20*time.Minute,
+		"How long to wait for a fenced node to become NotReady after fence command.")
 	o.configFlags.AddFlags(cmd.Flags())
 
 	return cmd
@@ -135,5 +142,7 @@ func (o *ValidateFencingOptions) Run(ctx context.Context) error {
 		SSHKeys:         o.sshKeys,
 		InsecureHostKey: o.insecureHostKeyCheck,
 		Nodes:           nodes,
+		ReadyTimeout:    o.readyTimeout,
+		NotReadyTimeout: o.notReadyTimeout,
 	})
 }
