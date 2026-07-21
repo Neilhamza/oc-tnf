@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -33,6 +34,7 @@ func run() int {
 	}
 
 	root := cmd.NewCmdTNF(streams)
+	root.Use = filepath.Base(os.Args[0])
 	root.Version = fmt.Sprintf("%s (%s)", version, date)
 	if err := root.ExecuteContext(ctx); err != nil {
 		if ctx.Err() != nil {
