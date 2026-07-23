@@ -24,5 +24,6 @@ archives:
       - LICENSE
       - README.md
       - kubectl_complete-tnf
+      - oc_complete-tnf
 checksum:
   name_template: checksums.txt
