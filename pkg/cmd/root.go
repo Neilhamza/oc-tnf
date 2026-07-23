@@ -37,7 +37,7 @@ func newCompletionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:       "completion [bash|zsh|fish|powershell]",
 		Short:     "Generate shell completion script",
-		Long:      "Generate shell completion script that works for both oc-tnf and kubectl-tnf binary names.",
+		Long:      "Generate shell completion script. For bash, registers completion for both oc-tnf and kubectl-tnf binary names.",
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
 		RunE: func(cmd *cobra.Command, args []string) error {
