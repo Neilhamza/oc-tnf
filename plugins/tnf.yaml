@@ -26,6 +26,13 @@ spec:
       uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.5/oc-tnf_linux_amd64.tar.gz
       sha256: "84dc6dc3161ac8be6741616dbeb490ed5b3394422a4e85db37cf58de143720c7"
       bin: oc-tnf
+      files:
+        - from: oc-tnf
+          to: oc-tnf
+        - from: oc_complete-tnf
+          to: oc_complete-tnf
+        - from: kubectl_complete-tnf
+          to: kubectl_complete-tnf
     - selector:
         matchLabels:
           os: linux
@@ -33,6 +40,13 @@ spec:
       uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.5/oc-tnf_linux_arm64.tar.gz
       sha256: "5b35502bfaec9bb3620a53caa1ec22787937baf27067bd49d5fd858d8aa36603"
       bin: oc-tnf
+      files:
+        - from: oc-tnf
+          to: oc-tnf
+        - from: oc_complete-tnf
+          to: oc_complete-tnf
+        - from: kubectl_complete-tnf
+          to: kubectl_complete-tnf
     - selector:
         matchLabels:
           os: darwin
@@ -40,6 +54,13 @@ spec:
       uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.5/oc-tnf_darwin_amd64.tar.gz
       sha256: "1519f94b62abff9537ef3bd8cc9a2378bec3ca7de6df0274ee9e279e8369cdde"
       bin: oc-tnf
+      files:
+        - from: oc-tnf
+          to: oc-tnf
+        - from: oc_complete-tnf
+          to: oc_complete-tnf
+        - from: kubectl_complete-tnf
+          to: kubectl_complete-tnf
     - selector:
         matchLabels:
           os: darwin
@@ -47,3 +68,10 @@ spec:
       uri: https://github.com/openshift/oc-tnf/releases/download/v0.0.5/oc-tnf_darwin_arm64.tar.gz
       sha256: "8301a4248a6e3dab82966404b9406b6f87aa48e150491473fd1f4ad17d926665"
       bin: oc-tnf
+      files:
+        - from: oc-tnf
+          to: oc-tnf
+        - from: oc_complete-tnf
+          to: oc_complete-tnf
+        - from: kubectl_complete-tnf
+          to: kubectl_complete-tnf
